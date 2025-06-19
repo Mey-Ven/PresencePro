@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  user-service:
+    build: .
+    ports:
+      - "8002:8002"
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@db:5432/presencepro_users
+      - AUTH_SERVICE_URL=http://auth-service:8001
+      - SECRET_KEY=your-secret-key-change-in-production
+      - CORS_ORIGINS=["http://localhost:3000", "http://localhost:8000", "http://localhost:8001"]
+    depends_on:
+      - db
+    volumes:
+      - .:/app
+    networks:
+      - presencepro-network
+
+  db:
+    image: postgres:15
+    environment:
+      - POSTGRES_DB=presencepro_users
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - presencepro-network
+
+volumes:
+  postgres_data:
+
+networks:
+  presencepro-network:
+    external: true
