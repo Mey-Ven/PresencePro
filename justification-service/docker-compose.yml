@@ -1,0 +1,96 @@
+version: '3.8'
+
+services:
+  justification-service:
+    build: .
+    container_name: presencepro-justification-service
+    ports:
+      - "8006:8006"
+    environment:
+      - SERVICE_NAME=justification-service
+      - SERVICE_VERSION=1.0.0
+      - SERVICE_PORT=8006
+      - DEBUG=False
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/presencepro_justifications
+      - AUTH_SERVICE_URL=http://auth-service:8001
+      - USER_SERVICE_URL=http://user-service:8002
+      - COURSE_SERVICE_URL=http://course-service:8003
+      - ATTENDANCE_SERVICE_URL=http://attendance-service:8005
+      - UPLOAD_DIR=/app/uploads
+      - LOG_FILE=/app/logs/justification.log
+    volumes:
+      - justification_uploads:/app/uploads
+      - justification_logs:/app/logs
+    depends_on:
+      - postgres
+    networks:
+      - presencepro-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8006/health', timeout=10)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: presencepro-justification-db
+    environment:
+      - POSTGRES_DB=presencepro_justifications
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - justification_postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5436:5432"  # Port différent pour éviter les conflits
+    networks:
+      - presencepro-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d presencepro_justifications"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Service de développement avec hot reload
+  justification-service-dev:
+    build: .
+    container_name: presencepro-justification-service-dev
+    ports:
+      - "8006:8006"
+    environment:
+      - SERVICE_NAME=justification-service
+      - SERVICE_VERSION=1.0.0-dev
+      - SERVICE_PORT=8006
+      - DEBUG=True
+      - DATABASE_URL=sqlite:///./justifications.db
+      - AUTH_SERVICE_URL=http://localhost:8001
+      - USER_SERVICE_URL=http://localhost:8002
+      - COURSE_SERVICE_URL=http://localhost:8003
+      - ATTENDANCE_SERVICE_URL=http://localhost:8005
+      - UPLOAD_DIR=/app/uploads
+      - LOG_FILE=/app/logs/justification.log
+    volumes:
+      - .:/app
+      - justification_uploads:/app/uploads
+      - justification_logs:/app/logs
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8006", "--reload"]
+    networks:
+      - presencepro-network
+    restart: unless-stopped
+    profiles:
+      - dev
+
+volumes:
+  justification_postgres_data:
+    driver: local
+  justification_uploads:
+    driver: local
+  justification_logs:
+    driver: local
+
+networks:
+  presencepro-network:
+    external: true
