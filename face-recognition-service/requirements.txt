@@ -1,0 +1,45 @@
+# FastAPI et serveur web
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+
+# Computer Vision et reconnaissance faciale
+opencv-python
+face-recognition
+numpy
+Pillow
+
+# Machine Learning (optionnel pour YOLOv8)
+# ultralytics==8.0.196
+# torch==2.1.0
+# torchvision==0.16.0
+
+# Base de données et ORM
+sqlalchemy==2.0.23
+alembic==1.12.1
+
+# Validation et configuration
+pydantic==2.5.0
+pydantic-settings==2.0.3
+
+# HTTP client pour intégration services
+httpx==0.25.2
+requests==2.31.0
+
+# Utilitaires
+python-dotenv==1.0.0
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+
+# Streaming et WebSocket
+websockets==12.0
+
+# Tests
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+
+# Développement
+black==23.11.0
+flake8==6.1.0
+isort==5.12.0

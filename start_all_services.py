@@ -22,7 +22,7 @@ class ServiceManager:
                 "process": None
             },
             {
-                "name": "user-service", 
+                "name": "user-service",
                 "port": 8002,
                 "path": "user-service",
                 "process": None
@@ -30,7 +30,13 @@ class ServiceManager:
             {
                 "name": "course-service",
                 "port": 8003,
-                "path": "course-service", 
+                "path": "course-service",
+                "process": None
+            },
+            {
+                "name": "face-recognition-service",
+                "port": 8004,
+                "path": "face-recognition-service",
                 "process": None
             }
         ]

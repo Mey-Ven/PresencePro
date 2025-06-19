@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  face-recognition-service:
+    build: .
+    container_name: presencepro_face_recognition
+    ports:
+      - "8004:8004"
+    devices:
+      - "/dev/video0:/dev/video0"  # Accès à la webcam (Linux)
+    environment:
+      - SERVICE_PORT=8004
+      - DEBUG=False
+      - CAMERA_INDEX=0
+      - VIDEO_WIDTH=640
+      - VIDEO_HEIGHT=480
+      - VIDEO_FPS=30
+      - FACE_DETECTION_MODEL=hog
+      - FACE_RECOGNITION_TOLERANCE=0.6
+      - AUTH_SERVICE_URL=http://auth-service:8001
+      - USER_SERVICE_URL=http://user-service:8002
+      - ATTENDANCE_SERVICE_URL=http://attendance-service:8005
+    volumes:
+      - ./data:/home/facerecog/data
+      - ./logs:/home/facerecog/logs
+    networks:
+      - presencepro-network
+    depends_on:
+      - auth-service
+      - user-service
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Service d'authentification (référence)
+  auth-service:
+    image: presencepro/auth-service:latest
+    container_name: presencepro_auth_service
+    ports:
+      - "8001:8001"
+    networks:
+      - presencepro-network
+    restart: unless-stopped
+
+  # Service utilisateur (référence)
+  user-service:
+    image: presencepro/user-service:latest
+    container_name: presencepro_user_service
+    ports:
+      - "8002:8002"
+    networks:
+      - presencepro-network
+    restart: unless-stopped
+
+networks:
+  presencepro-network:
+    driver: bridge
+    name: presencepro-network
+
+volumes:
+  face_data:
+    driver: local
+  face_logs:
+    driver: local
