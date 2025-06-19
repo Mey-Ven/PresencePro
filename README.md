@@ -12,12 +12,12 @@ PresencePro est construit avec une architecture microservices modulaire :
 |---------|------|-------------|--------|
 | **auth-service** | 8001 | Authentification et autorisation | ✅ Complet |
 | **user-service** | 8002 | Gestion des utilisateurs (étudiants, enseignants, parents) | ✅ Complet |
+| **course-service** | 8003 | Gestion des cours et emplois du temps | ✅ Complet |
 
 ### Services Prévus
 - **attendance-service** : Gestion des présences
 - **notification-service** : Notifications et alertes
 - **report-service** : Rapports et statistiques
-- **schedule-service** : Gestion des emplois du temps
 
 ## 🚀 Démarrage Rapide
 
@@ -50,10 +50,19 @@ python init_db.py
 uvicorn app.main:app --reload --port 8002
 ```
 
+4. **Service de cours**
+```bash
+cd course-service
+pip install -r requirements.txt
+python init_db.py
+uvicorn app.main:app --reload --port 8003
+```
+
 ### Accès aux Services
 
 - **Auth Service** : http://localhost:8001/docs
 - **User Service** : http://localhost:8002/docs
+- **Course Service** : http://localhost:8003/docs
 
 ## 👥 Utilisateurs par Défaut
 
@@ -77,6 +86,7 @@ Le système est livré avec des données d'exemple pour tester toutes les foncti
 ### Services
 - [Auth Service](./auth-service/README.md) - Documentation complète du service d'authentification
 - [User Service](./user-service/README.md) - Documentation complète du service utilisateur
+- [Course Service](./course-service/README.md) - Documentation complète du service de cours
 
 ### Guides
 - [Déploiement](./user-service/DEPLOYMENT.md) - Guide de déploiement en production
@@ -93,6 +103,10 @@ python -m pytest tests/ -v
 # Service utilisateur
 cd user-service
 python -m pytest tests/ -v
+
+# Service de cours
+cd course-service
+python -m pytest tests/ -v
 ```
 
 ### Tests Manuels
@@ -100,6 +114,7 @@ python -m pytest tests/ -v
 # Test des services
 cd auth-service && python test_service.py
 cd user-service && python test_service.py
+cd course-service && python validate_service.py
 ```
 
 ## 🐳 Docker
@@ -138,6 +153,9 @@ AUTH_SERVICE_URL=http://localhost:8001
 - **Gestion des rôles** (Admin, Teacher, Parent, Student)
 - **CRUD Utilisateurs** (Étudiants, Enseignants, Parents)
 - **Relations Parent-Élève**
+- **Gestion des cours** complète avec emplois du temps
+- **Attribution enseignants/étudiants** aux cours
+- **Planification horaires** avec gestion des conflits
 - **API REST** documentée
 - **Tests unitaires** et d'intégration
 
