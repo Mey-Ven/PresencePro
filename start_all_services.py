@@ -38,6 +38,12 @@ class ServiceManager:
                 "port": 8004,
                 "path": "face-recognition-service",
                 "process": None
+            },
+            {
+                "name": "attendance-service",
+                "port": 8005,
+                "path": "attendance-service",
+                "process": None
             }
         ]
         self.running = False

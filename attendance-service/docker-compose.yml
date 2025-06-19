@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  attendance-service:
+    build: .
+    ports:
+      - "8005:8005"
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/presencepro_attendance
+      - AUTH_SERVICE_URL=http://auth-service:8001
+      - USER_SERVICE_URL=http://user-service:8002
+      - COURSE_SERVICE_URL=http://course-service:8003
+      - FACE_RECOGNITION_SERVICE_URL=http://face-recognition-service:8004
+    depends_on:
+      - postgres
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - presencepro-network
+
+  postgres:
+    image: postgres:15
+    environment:
+      - POSTGRES_DB=presencepro_attendance
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    ports:
+      - "5434:5432"  # Port différent pour éviter les conflits
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - presencepro-network
+
+  pgadmin:
+    image: dpage/pgadmin4
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@presencepro.com
+      - PGADMIN_DEFAULT_PASSWORD=admin
+    ports:
+      - "5051:80"
+    depends_on:
+      - postgres
+    networks:
+      - presencepro-network
+
+volumes:
+  postgres_data:
+
+networks:
+  presencepro-network:
+    external: true

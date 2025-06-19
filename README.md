@@ -14,11 +14,12 @@ PresencePro est construit avec une architecture microservices modulaire :
 | **user-service** | 8002 | Gestion des utilisateurs (étudiants, enseignants, parents) | ✅ Complet |
 | **course-service** | 8003 | Gestion des cours et emplois du temps | ✅ Complet |
 | **face-recognition-service** | 8004 | Reconnaissance faciale et enregistrement automatique des présences | ✅ Complet |
+| **attendance-service** | 8005 | Gestion des présences, absences, rapports et alertes | ✅ Complet |
 
 ### Services Prévus
-- **attendance-service** : Gestion des présences (intégration avec face-recognition)
-- **notification-service** : Notifications et alertes
-- **report-service** : Rapports et statistiques
+- **notification-service** : Notifications push et emails
+- **report-service** : Rapports avancés et analytics
+- **mobile-api** : API dédiée aux applications mobiles
 
 ## 🚀 Démarrage Rapide
 
@@ -67,12 +68,21 @@ python init_db.py
 uvicorn app.main:app --reload --port 8004
 ```
 
+6. **Service de gestion des présences**
+```bash
+cd attendance-service
+pip install -r requirements.txt
+python init_db.py
+uvicorn app.main:app --reload --port 8005
+```
+
 ### Accès aux Services
 
 - **Auth Service** : http://localhost:8001/docs
 - **User Service** : http://localhost:8002/docs
 - **Course Service** : http://localhost:8003/docs
 - **Face Recognition Service** : http://localhost:8004/docs
+- **Attendance Service** : http://localhost:8005/docs
 
 ## 👥 Utilisateurs par Défaut
 
@@ -98,6 +108,7 @@ Le système est livré avec des données d'exemple pour tester toutes les foncti
 - [User Service](./user-service/README.md) - Documentation complète du service utilisateur
 - [Course Service](./course-service/README.md) - Documentation complète du service de cours
 - [Face Recognition Service](./face-recognition-service/README.md) - Documentation complète du service de reconnaissance faciale
+- [Attendance Service](./attendance-service/README.md) - Documentation complète du service de gestion des présences
 
 ### Guides
 - [Déploiement](./user-service/DEPLOYMENT.md) - Guide de déploiement en production
@@ -122,6 +133,10 @@ python -m pytest tests/ -v
 # Service de reconnaissance faciale
 cd face-recognition-service
 python test_service.py
+
+# Service de gestion des présences
+cd attendance-service
+python test_service.py
 ```
 
 ### Tests Manuels
@@ -131,6 +146,7 @@ cd auth-service && python test_service.py
 cd user-service && python test_service.py
 cd course-service && python validate_service.py
 cd face-recognition-service && python test_service.py
+cd attendance-service && python test_service.py
 ```
 
 ## 🐳 Docker
@@ -175,6 +191,10 @@ AUTH_SERVICE_URL=http://localhost:8001
 - **Reconnaissance faciale** en temps réel avec webcam
 - **Streaming vidéo** avec détection automatique
 - **Enregistrement automatique** des présences
+- **Gestion complète des présences** et absences
+- **Rapports et statistiques** avancés
+- **Système d'alertes** intelligent
+- **Intégration services** complète
 - **API REST** documentée
 - **Tests unitaires** et d'intégration
 
