@@ -15,10 +15,13 @@ import {
   ChartBarIcon,
 } from '@heroicons/react/24/outline';
 
+// Define specific types for course status (consistent with AdminCourses)
+type CourseStatus = 'active' | 'inactive';
+
 // Local interfaces for teacher-specific data
 interface TeacherCourseStats {
   totalCourses: number;
-  totalStudents: number;
+  totalStudents: number; // This is max capacity sum, not actual enrolled students
   averageAttendanceRate: number;
   sessionsThisWeek: number;
 }

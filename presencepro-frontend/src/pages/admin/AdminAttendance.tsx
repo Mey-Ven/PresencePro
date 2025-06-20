@@ -14,12 +14,36 @@ import {
   DocumentArrowDownIcon,
 } from '@heroicons/react/24/outline';
 
+// Define specific types for status
+type AttendanceStatus = 'present' | 'absent' | 'late' | 'justified';
+
+const attendanceStatusLabels: Record<AttendanceStatus, string> = {
+  present: 'Présent',
+  absent: 'Absent',
+  late: 'Retard',
+  justified: 'Justifié',
+};
+
+const attendanceStatusBadges: Record<AttendanceStatus, string> = {
+  present: 'bg-green-100 text-green-800',
+  absent: 'bg-red-100 text-red-800',
+  late: 'bg-yellow-100 text-yellow-800',
+  justified: 'bg-blue-100 text-blue-800',
+};
+
+const attendanceStatusIcons: Record<AttendanceStatus, JSX.Element> = {
+  present: <CheckCircleIcon className="h-4 w-4 mr-1" />,
+  absent: <XCircleIcon className="h-4 w-4 mr-1" />,
+  late: <ExclamationTriangleIcon className="h-4 w-4 mr-1" />,
+  justified: <ClipboardDocumentListIcon className="h-4 w-4 mr-1" />,
+};
+
 // Local interfaces for filters
 interface LocalAttendanceFilters {
   date: string;
-  class: string;
-  course: string;
-  status: string;
+  class: string; // Assuming class name, not ID, based on usage
+  course: string; // Assuming course name, not ID, based on usage
+  status: string; // Can be 'all' or AttendanceStatus
   search: string;
 }
 
@@ -158,32 +182,23 @@ const AdminAttendance: React.FC = () => {
   const filteredRecords = attendanceRecords;
 
   // Obtenir le badge de statut
-  const getStatusBadge = (status: string) => {
-    const badges = {
-      present: 'bg-green-100 text-green-800',
-      absent: 'bg-red-100 text-red-800',
-      late: 'bg-yellow-100 text-yellow-800',
-      justified: 'bg-blue-100 text-blue-800',
-    };
-
-    const labels = {
-      present: 'Présent',
-      absent: 'Absent',
-      late: 'Retard',
-      justified: 'Justifié',
-    };
-
-    const icons = {
-      present: <CheckCircleIcon className="h-4 w-4 mr-1" />,
-      absent: <XCircleIcon className="h-4 w-4 mr-1" />,
-      late: <ExclamationTriangleIcon className="h-4 w-4 mr-1" />,
-      justified: <ClipboardDocumentListIcon className="h-4 w-4 mr-1" />,
-    };
+  const getStatusBadge = (statusValue: string) => {
+    // Ensure statusValue is a valid AttendanceStatus, otherwise default or handle error
+    const status = statusValue as AttendanceStatus;
+    if (!attendanceStatusLabels[status]) {
+      // Fallback for unknown status
+      return (
+        <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-md bg-gray-100 text-gray-800">
+          <ExclamationTriangleIcon className="h-4 w-4 mr-1" />
+          Inconnu ({statusValue})
+        </span>
+      );
+    }
 
     return (
-      <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-md ${badges[status as keyof typeof badges]}`}>
-        {icons[status as keyof typeof icons]}
-        {labels[status as keyof typeof labels]}
+      <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-md ${attendanceStatusBadges[status]}`}>
+        {attendanceStatusIcons[status]}
+        {attendanceStatusLabels[status]}
       </span>
     );
   };

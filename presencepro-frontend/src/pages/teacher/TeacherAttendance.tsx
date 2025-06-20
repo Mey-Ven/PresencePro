@@ -17,9 +17,30 @@ import {
   AcademicCapIcon,
 } from '@heroicons/react/24/outline';
 
+// Define specific types for student attendance status
+type StudentAttendanceStatus = 'present' | 'absent' | 'late' | 'justified' | 'not_marked';
+
+const studentAttendanceStatusIcons: Record<StudentAttendanceStatus, JSX.Element> = {
+  present: <CheckCircleIcon className="h-5 w-5 text-green-500" />,
+  absent: <XCircleIcon className="h-5 w-5 text-red-500" />,
+  late: <ExclamationTriangleIcon className="h-5 w-5 text-yellow-500" />,
+  justified: <ClipboardDocumentListIcon className="h-5 w-5 text-blue-500" />,
+  not_marked: <ClockIcon className="h-5 w-5 text-gray-400" />,
+};
+
+// Helper to safely convert API status to local status
+const getValidatedStudentStatus = (apiStatus: string | undefined | null): StudentAttendanceStatus => {
+  const validStatuses: StudentAttendanceStatus[] = ['present', 'absent', 'late', 'justified'];
+  if (apiStatus && validStatuses.includes(apiStatus as StudentAttendanceStatus)) {
+    return apiStatus as StudentAttendanceStatus;
+  }
+  return 'not_marked';
+};
+
+
 // Local interfaces for teacher attendance
 interface LocalStudent extends Student {
-  status: 'present' | 'absent' | 'late' | 'justified' | 'not_marked';
+  status: StudentAttendanceStatus;
   notes?: string;
 }
 
@@ -82,7 +103,7 @@ const TeacherAttendance: React.FC = () => {
               const attendanceRecord = existingAttendance.find(record => record.student_id === student.id);
               return {
                 ...student,
-                status: attendanceRecord ? attendanceRecord.status as any : 'not_marked',
+                status: attendanceRecord ? getValidatedStudentStatus(attendanceRecord.status) : 'not_marked',
                 notes: attendanceRecord?.notes || undefined,
               };
             });
@@ -185,7 +206,10 @@ const TeacherAttendance: React.FC = () => {
   };
 
   // Marquer la présence d'un étudiant
-  const markAttendance = (studentId: string, status: 'present' | 'absent' | 'late' | 'justified') => {
+  const markAttendance = (studentId: string, status: StudentAttendanceStatus) => {
+    // Ensure 'not_marked' is not passed directly from buttons, but handled if needed
+    if (status === 'not_marked' && !confirm("Marquer comme 'non marqué' ?")) return;
+
     setSessions(prev => prev.map(session =>
       session.id === selectedSession
         ? {
@@ -251,19 +275,8 @@ const TeacherAttendance: React.FC = () => {
   ) || [];
 
   // Obtenir l'icône de statut
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'present':
-        return <CheckCircleIcon className="h-5 w-5 text-green-500" />;
-      case 'absent':
-        return <XCircleIcon className="h-5 w-5 text-red-500" />;
-      case 'late':
-        return <ExclamationTriangleIcon className="h-5 w-5 text-yellow-500" />;
-      case 'justified':
-        return <ClipboardDocumentListIcon className="h-5 w-5 text-blue-500" />;
-      default:
-        return <ClockIcon className="h-5 w-5 text-gray-400" />;
-    }
+  const getStatusIcon = (statusValue: StudentAttendanceStatus) => {
+    return studentAttendanceStatusIcons[statusValue] || <ClockIcon className="h-5 w-5 text-gray-400" />; // Fallback
   };
 
   if (isLoading) {
@@ -448,8 +461,8 @@ const TeacherAttendance: React.FC = () => {
                               {student.photo ? (
                                 <img
                                   className="h-10 w-10 rounded-full object-cover"
-                                  src={student.photo}
-                                  alt={`${student.firstName} ${student.lastName}`}
+                                  src={student.photo_url || undefined} // Assuming photo_url from Student type might be null/undefined
+                                  alt={`${student.first_name} ${student.last_name}`}
                                 />
                               ) : (
                                 <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
