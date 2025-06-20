@@ -9,7 +9,7 @@ services:
       - "8008:8008"
     environment:
       - SERVICE_PORT=8008
-      - DEBUG=True
+      - DEBUG=False # Set to False for production
       - DATABASE_URL=sqlite:///./notifications.db
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/0

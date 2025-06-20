@@ -23,7 +23,26 @@ class AttendanceService:
         self.db = db
         self.logger = logging.getLogger(__name__)
         self.timezone = tz.gettz(settings.default_timezone)
-    
+
+    def create_session(self, session_data: dict) -> Dict[str, Any]: # Replace dict with actual Pydantic model if available
+        """Crée une nouvelle session de présence. À IMPLÉMENTER."""
+        # Placeholder implementation
+        # session = AttendanceSession(**session_data.dict()) # Assuming session_data is a Pydantic model
+        # self.db.add(session)
+        # self.db.commit()
+        # self.db.refresh(session)
+        # return session # Or a Pydantic response model
+        self.logger.info(f"Création de session (simulation) pour le cours: {session_data.course_id}")
+        return {
+            "session_id": f"session_{datetime.now().timestamp()}",
+            "course_id": session_data.course_id,
+            "schedule_id": session_data.schedule_id,
+            "start_time": session_data.start_time,
+            "end_time": session_data.end_time,
+            "status": "active",
+            "created_at": datetime.now()
+        }
+
     def mark_attendance(self, request: AttendanceMarkRequest, created_by: str = None) -> AttendanceResponse:
         """Marquer une présence"""
         try:

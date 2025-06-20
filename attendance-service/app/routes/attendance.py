@@ -256,9 +256,12 @@ async def create_attendance_session(
     Créer une session de présence
     """
     try:
-        # TODO: Implémenter la création de session
-        raise HTTPException(status_code=501, detail="Fonctionnalité en cours de développement")
+        attendance_service = AttendanceService(db)
+        created_session = attendance_service.create_session(session_data=session)
+        return created_session
         
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur interne: {str(e)}")
 

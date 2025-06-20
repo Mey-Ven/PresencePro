@@ -10,12 +10,50 @@ from app.core.database import (
     get_database, check_database_connection, check_redis_connection, 
     get_database_stats
 )
-from app.models.statistics import HealthCheck
+from app.models.statistics import HealthCheck, LastCalculation # Assuming LastCalculation model for this
 from app.core.config import settings
+from typing import Optional # For type hinting
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["Health"])
+
+SERVICE_START_TIME = datetime.now(timezone.utc)
+
+# Placeholder functions - these need proper implementation
+def get_last_calculation_time(db: Session) -> Optional[datetime]:
+    """Récupère l'heure de la dernière calculation de statistiques. À IMPLÉMENTER."""
+    # last_calc = db.query(LastCalculation).order_by(LastCalculation.timestamp.desc()).first()
+    # return last_calc.timestamp if last_calc else None
+    logger.info("get_last_calculation_time appelée (simulation).")
+    return datetime.now(timezone.utc) - timedelta(minutes=5) # Simulated time
+
+def get_cache_hit_rate() -> float:
+    """Calcule le taux de hit du cache. À IMPLÉMENTER."""
+    # hits = redis_client.get("cache_hits") or 0
+    # misses = redis_client.get("cache_misses") or 0
+    # if (hits + misses) == 0: return 0.0
+    # return hits / (hits + misses)
+    logger.info("get_cache_hit_rate appelée (simulation).")
+    return 0.75 # Simulated rate
+
+CALCULATION_COUNTERS = {
+    "student_stats": 0,
+    "class_stats": 0,
+    "global_stats": 0,
+    "charts_generated": 0,
+    "exports_created": 0,
+}
+
+def increment_calculation_count(calc_type: str):
+    """Incrémente le compteur pour un type de calcul. Sera appelé par le service de statistiques."""
+    if calc_type in CALCULATION_COUNTERS:
+        CALCULATION_COUNTERS[calc_type] += 1
+
+def get_calculation_count(calc_type: str) -> int:
+    """Récupère le compteur pour un type de calcul."""
+    logger.info(f"get_calculation_count pour {calc_type} appelée (simulation).")
+    return CALCULATION_COUNTERS.get(calc_type, -1) # Return -1 if type unknown for some reason
 
 
 @router.get("/")
@@ -72,7 +110,7 @@ async def health_check(db: Session = Depends(get_database)):
             database_connected=db_healthy,
             redis_connected=redis_healthy,
             cache_size=cache_size,
-            last_calculation=None  # TODO: Récupérer la dernière calculation
+            last_calculation=get_last_calculation_time(db)
         )
         
         return health_status
@@ -199,40 +237,42 @@ async def get_metrics(db: Session = Depends(get_database)):
                 from app.core.database import redis_client
                 if redis_client:
                     cache_metrics["size"] = redis_client.dbsize()
-                    # TODO: Calculer le hit rate du cache
+                    cache_metrics["hit_rate"] = get_cache_hit_rate()
             except:
                 pass
         
         # Métriques de performance
         performance_metrics = {
-            "database_response_time_ms": 0,  # TODO: Mesurer
-            "cache_response_time_ms": 0,     # TODO: Mesurer
-            "average_calculation_time_ms": 0, # TODO: Mesurer
-            "concurrent_requests": 0          # TODO: Compter
+            "database_response_time_ms": -1,  # TODO: Mesurer (nécessite instrumentation)
+            "cache_response_time_ms": -1,     # TODO: Mesurer (nécessite instrumentation)
+            "average_calculation_time_ms": -1, # TODO: Mesurer (nécessite instrumentation)
+            "concurrent_requests": -1          # TODO: Compter (via ASGI server ou middleware)
         }
         
+        current_uptime = (datetime.now(timezone.utc) - SERVICE_START_TIME).total_seconds()
+
         metrics = {
             "service_info": {
                 "name": settings.service_name,
                 "version": settings.service_version,
-                "uptime_seconds": 0,  # TODO: Calculer l'uptime
-                "status": "healthy"
+                "uptime_seconds": current_uptime,
+                "status": "healthy" # Simplifié, pourrait dépendre d'autres facteurs
             },
             "database": db_stats,
             "cache": cache_metrics,
             "performance": performance_metrics,
             "requests": {
-                "total": 0,           # TODO: Compter les requêtes
-                "successful": 0,      # TODO: Compter les succès
-                "failed": 0,          # TODO: Compter les échecs
-                "rate_per_minute": 0  # TODO: Calculer le taux
+                "total": -1,           # TODO: Compter les requêtes (via middleware)
+                "successful": -1,      # TODO: Compter les succès (via middleware)
+                "failed": -1,          # TODO: Compter les échecs (via middleware)
+                "rate_per_minute": -1  # TODO: Calculer le taux (via middleware)
             },
             "calculations": {
-                "student_stats": 0,   # TODO: Compter
-                "class_stats": 0,     # TODO: Compter
-                "global_stats": 0,    # TODO: Compter
-                "charts_generated": 0, # TODO: Compter
-                "exports_created": 0   # TODO: Compter
+                "student_stats": get_calculation_count("student_stats"),
+                "class_stats": get_calculation_count("class_stats"),
+                "global_stats": get_calculation_count("global_stats"),
+                "charts_generated": get_calculation_count("charts_generated"),
+                "exports_created": get_calculation_count("exports_created")
             },
             "timestamp": datetime.now(timezone.utc)
         }

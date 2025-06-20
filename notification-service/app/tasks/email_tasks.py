@@ -10,10 +10,46 @@ import uuid
 from app.core.celery_app import celery_app
 from app.services.email_service import email_service
 from app.models.notification import NotificationLog, NotificationStatus, UserPreference
-from app.core.database import SessionLocal
+from app.core.database import SessionLocal, Session
+from app.models.user import User # Assuming a User model exists for email lookup
 
 logger = logging.getLogger(__name__)
 
+# Placeholder functions - these need proper implementation
+def get_user_email(user_id: str, db: Session) -> Optional[str]:
+    """Récupère l'email d'un utilisateur. À IMPLÉMENTER."""
+    user = db.query(User).filter(User.id == user_id).first()
+    if user:
+        return user.email
+    logger.warning(f"Utilisateur {user_id} non trouvé pour récupération d'email.")
+    return None
+
+def calculate_daily_digest_data(user_id: str, db: Session) -> Dict[str, Any]:
+    """Calcule les données pour le digest quotidien. À IMPLÉMENTER."""
+    # Cette fonction devrait interroger d'autres services ou tables
+    # pour obtenir les informations nécessaires.
+    logger.info(f"Calcul des données du digest quotidien pour {user_id} (simulation).")
+    return {
+        "user_id": user_id,
+        "date": datetime.now().strftime("%Y-%m-%d"),
+        "absences_count": 2,  # Exemple
+        "unread_messages": 5,  # Exemple
+        "pending_justifications": 1  # Exemple
+    }
+
+def calculate_weekly_report_data(user_id: str, db: Session) -> Dict[str, Any]:
+    """Calcule les données pour le rapport hebdomadaire. À IMPLÉMENTER."""
+    # Similaire au digest, cette fonction récupérera des données agrégées.
+    logger.info(f"Calcul des données du rapport hebdomadaire pour {user_id} (simulation).")
+    return {
+        "user_id": user_id,
+        "week_start": (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d"),
+        "week_end": datetime.now().strftime("%Y-%m-%d"),
+        "attendance_rate": 85.5,  # Exemple
+        "total_absences": 10,  # Exemple
+        "justified_absences": 8,  # Exemple
+        "unjustified_absences": 2  # Exemple
+    }
 
 @celery_app.task(bind=True, max_retries=3, default_retry_delay=60)
 def send_email_task(
@@ -178,25 +214,20 @@ def send_daily_digest():
         ).all()
         
         for user_pref in users_with_digest:
-            # TODO: Générer le contenu du digest pour cet utilisateur
-            # - Résumé des absences de la journée
-            # - Messages non lus
-            # - Justifications en attente
-            
-            digest_data = {
-                "user_id": user_pref.user_id,
-                "date": datetime.now().strftime("%Y-%m-%d"),
-                "absences_count": 0,  # TODO: Calculer
-                "unread_messages": 0,  # TODO: Calculer
-                "pending_justifications": 0  # TODO: Calculer
-            }
+            # Générer le contenu du digest pour cet utilisateur
+            digest_data = calculate_daily_digest_data(user_pref.user_id, db)
             
             # Envoyer le digest
             notification_id = f"daily_digest_{user_pref.user_id}_{datetime.now().strftime('%Y%m%d')}"
-            
+            user_email = get_user_email(user_pref.user_id, db)
+
+            if not user_email:
+                logger.error(f"Email non trouvé pour l'utilisateur {user_pref.user_id} pour le digest quotidien.")
+                continue
+
             send_email_task.delay(
                 notification_id=notification_id,
-                to_email="",  # TODO: Récupérer l'email de l'utilisateur
+                to_email=user_email,
                 subject="Digest quotidien PresencePro",
                 content="",  # Sera généré par le template
                 template_id="daily_digest_email_fr",
@@ -231,27 +262,20 @@ def send_weekly_report():
         ).all()
         
         for user_pref in users_with_report:
-            # TODO: Générer le contenu du rapport pour cet utilisateur
-            # - Statistiques de présence de la semaine
-            # - Résumé des justifications
-            # - Tendances et alertes
-            
-            report_data = {
-                "user_id": user_pref.user_id,
-                "week_start": (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d"),
-                "week_end": datetime.now().strftime("%Y-%m-%d"),
-                "attendance_rate": 95.0,  # TODO: Calculer
-                "total_absences": 2,  # TODO: Calculer
-                "justified_absences": 1,  # TODO: Calculer
-                "unjustified_absences": 1  # TODO: Calculer
-            }
+            # Générer le contenu du rapport pour cet utilisateur
+            report_data = calculate_weekly_report_data(user_pref.user_id, db)
             
             # Envoyer le rapport
             notification_id = f"weekly_report_{user_pref.user_id}_{datetime.now().strftime('%Y%W')}"
+            user_email = get_user_email(user_pref.user_id, db)
+
+            if not user_email:
+                logger.error(f"Email non trouvé pour l'utilisateur {user_pref.user_id} pour le rapport hebdomadaire.")
+                continue
             
             send_email_task.delay(
                 notification_id=notification_id,
-                to_email="",  # TODO: Récupérer l'email de l'utilisateur
+                to_email=user_email,
                 subject="Rapport hebdomadaire PresencePro",
                 content="",  # Sera généré par le template
                 template_id="weekly_report_email_fr",

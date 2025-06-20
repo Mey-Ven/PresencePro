@@ -28,6 +28,22 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+async def generate_sample_data():
+    """Génère des données d'exemple pour le service de statistiques. À IMPLÉMENTER."""
+    # Cette fonction devrait peupler la base de données avec des statistiques fictives
+    # pour les étudiants, les cours, etc., afin de faciliter le développement et les tests.
+    # Exemple:
+    # from app.services.statistics_service import StatisticsService
+    # from app.core.database import SessionLocal
+    # db = SessionLocal()
+    # stats_service = StatisticsService(db)
+    # await stats_service.create_sample_student_stats("student123", {"attendance_rate": 0.95, "total_absences": 2})
+    # await stats_service.create_sample_class_stats("classABC", {"average_attendance": 0.92})
+    # db.close()
+    logger.info("Fonction generate_sample_data appelée (simulation). Implémentation requise.")
+    pass
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Gestionnaire du cycle de vie de l'application"""
@@ -44,10 +60,10 @@ async def lifespan(app: FastAPI):
         init_database()
         logger.info("✅ Base de données initialisée")
         
-        # TODO: Initialiser les données d'exemple si nécessaire
+        # Initialiser les données d'exemple si nécessaire
         if settings.mock_data_enabled:
             logger.info("📊 Génération de données d'exemple...")
-            # await generate_sample_data()
+            await generate_sample_data() # Placeholder, needs implementation
         
         logger.info("✅ Statistics Service démarré avec succès")
         

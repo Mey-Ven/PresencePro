@@ -4,9 +4,33 @@ Service métier pour la gestion des cours
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
 from typing import List, Optional
-from datetime import date, datetime
-from app.models.course import Course, CourseStatus
+from datetime import date, datetime, timedelta # Added timedelta
+from app.models.course import Course, CourseStatus, Schedule
 from app.schemas.course import CourseCreate, CourseUpdate, CourseStats
+import logging
+
+logger = logging.getLogger(__name__)
+
+# Placeholder function - needs proper implementation
+def calculate_next_class_datetime(course_id: int, db: Session) -> Optional[datetime]:
+    """Calcule la date et l'heure du prochain cours programmé. À IMPLÉMENTER."""
+    # from sqlalchemy import and_
+    # now = datetime.now()
+    # next_schedule_entry = db.query(Schedule).filter(
+    #     and_(
+    #         Schedule.course_id == course_id,
+    #         Schedule.start_time > now # Assumant que Schedule a start_time et potentiellement une date
+    #         # Il faudrait peut-être combiner Schedule.date et Schedule.start_time si ce sont des champs séparés
+    #         # ou si Schedule.start_time est un DATETIME complet.
+    #     )
+    # ).order_by(Schedule.start_time.asc()).first()
+    #
+    # if next_schedule_entry:
+    #     return next_schedule_entry.start_time # ou la combinaison de date et heure
+
+    logger.info(f"calculate_next_class_datetime pour course {course_id} (simulation).")
+    # Simuler un prochain cours dans 2 jours à 10h
+    return datetime.now() + timedelta(days=2, hours=10)
 
 
 class CourseService:
@@ -196,10 +220,12 @@ class CourseService:
             )
         ).count()
         
+        next_class_datetime = calculate_next_class_datetime(course_id, self.db)
+
         return CourseStats(
             course_id=course_id,
             total_students=total_students,
             total_teachers=total_teachers,
             total_schedules=total_schedules,
-            next_class=None  # TODO: Calculer le prochain cours
+            next_class=next_class_datetime
         )

@@ -16,6 +16,7 @@ from app.models.schemas import (
 from app.services.justification_service import JustificationService
 from app.services.integration_service import IntegrationService
 from app.services.file_service import FileService
+from app.core.auth import get_current_user # Assumed location
 
 router = APIRouter()
 
@@ -24,7 +25,7 @@ router = APIRouter()
 async def create_justification(
     request: JustificationCreate,
     db: Session = Depends(get_db),
-    current_user_id: str = "student_001"  # TODO: Récupérer depuis le token JWT
+    current_user: dict = Depends(get_current_user)  # Remplacer par la dépendance d'authentification
 ):
     """
     Créer une nouvelle justification d'absence
@@ -32,7 +33,8 @@ async def create_justification(
     try:
         justification_service = JustificationService(db)
         integration_service = IntegrationService()
-        
+        current_user_id = current_user["id"]
+
         # Valider la demande (désactivé pour les tests)
         # validation = await integration_service.validate_justification_request(
         #     current_user_id,
@@ -65,13 +67,14 @@ async def create_justification(
 async def submit_justification(
     justification_id: int,
     db: Session = Depends(get_db),
-    current_user_id: str = "student_001"  # TODO: Récupérer depuis le token JWT
+    current_user: dict = Depends(get_current_user)  # Remplacer par la dépendance d'authentification
 ):
     """
     Soumettre une justification pour approbation
     """
     try:
         justification_service = JustificationService(db)
+        current_user_id = current_user["id"]
         
         justification = justification_service.submit_justification(
             justification_id,
@@ -91,7 +94,7 @@ async def approve_by_parent(
     justification_id: int,
     approval: JustificationApproval,
     db: Session = Depends(get_db),
-    current_user_id: str = "parent_001"  # TODO: Récupérer depuis le token JWT
+    current_user: dict = Depends(get_current_user)  # Remplacer par la dépendance d'authentification
 ):
     """
     Approbation parentale d'une justification
@@ -99,6 +102,7 @@ async def approve_by_parent(
     try:
         justification_service = JustificationService(db)
         integration_service = IntegrationService()
+        current_user_id = current_user["id"]
         
         # Récupérer la justification pour vérifier la relation parent-étudiant
         justification = justification_service.get_justification(justification_id)
@@ -137,7 +141,7 @@ async def validate_by_admin(
     justification_id: int,
     approval: JustificationApproval,
     db: Session = Depends(get_db),
-    current_user_id: str = "admin_001"  # TODO: Récupérer depuis le token JWT
+    current_user: dict = Depends(get_current_user)  # Remplacer par la dépendance d'authentification
 ):
     """
     Validation administrative d'une justification
@@ -145,13 +149,14 @@ async def validate_by_admin(
     try:
         justification_service = JustificationService(db)
         integration_service = IntegrationService()
+        current_user_id = current_user["id"]
+        user_role = current_user["role"] # Supposant que le rôle est dans le token
         
         # Vérifier que l'utilisateur est admin
-        user_role = await integration_service.get_user_role(current_user_id)
         if user_role not in ["admin", "teacher"]:
             raise HTTPException(
                 status_code=403,
-                detail="Seuls les administrateurs peuvent valider les justifications"
+                detail="Seuls les administrateurs ou enseignants peuvent valider les justifications"
             )
         
         # Valider la justification
@@ -181,20 +186,34 @@ async def validate_by_admin(
 async def get_justification(
     justification_id: int,
     db: Session = Depends(get_db),
-    current_user_id: str = "user_001"  # TODO: Récupérer depuis le token JWT
+    current_user: dict = Depends(get_current_user)  # Remplacer par la dépendance d'authentification
 ):
     """
     Récupérer une justification par ID
     """
     try:
         justification_service = JustificationService(db)
-        
+        integration_service = IntegrationService()
+        current_user_id = current_user["id"]
+        user_role = current_user["role"]
+
         justification = justification_service.get_justification(justification_id)
         if not justification:
             raise HTTPException(status_code=404, detail="Justification non trouvée")
         
-        # TODO: Vérifier les permissions d'accès
+        # Vérifier les permissions d'accès
+        if user_role == "student" and justification.student_id != current_user_id:
+            raise HTTPException(status_code=403, detail="Accès non autorisé")
         
+        if user_role == "parent":
+            is_parent = await integration_service.verify_parent_student_relationship(current_user_id, justification.student_id)
+            if not is_parent:
+                raise HTTPException(status_code=403, detail="Accès non autorisé")
+
+        # Les admins et enseignants ont accès
+        if user_role not in ["admin", "teacher", "student", "parent"]:
+             raise HTTPException(status_code=403, detail="Rôle utilisateur inconnu ou non autorisé")
+
         return justification
         
     except Exception as e:
@@ -207,15 +226,29 @@ async def get_student_justifications(
     status: Optional[JustificationStatus] = None,
     limit: int = Query(50, ge=1, le=100),
     db: Session = Depends(get_db),
-    current_user_id: str = "user_001"  # TODO: Récupérer depuis le token JWT
+    current_user: dict = Depends(get_current_user)  # Remplacer par la dépendance d'authentification
 ):
     """
     Récupérer les justifications d'un étudiant
     """
     try:
         justification_service = JustificationService(db)
+        integration_service = IntegrationService()
+        current_user_id = current_user["id"]
+        user_role = current_user["role"]
         
-        # TODO: Vérifier les permissions d'accès
+        # Vérifier les permissions d'accès
+        if user_role == "student" and student_id != current_user_id:
+            raise HTTPException(status_code=403, detail="Accès non autorisé")
+
+        if user_role == "parent":
+            is_parent = await integration_service.verify_parent_student_relationship(current_user_id, student_id)
+            if not is_parent:
+                raise HTTPException(status_code=403, detail="Accès non autorisé")
+
+        # Les admins et enseignants ont accès
+        if user_role not in ["admin", "teacher", "student", "parent"]:
+             raise HTTPException(status_code=403, detail="Rôle utilisateur inconnu ou non autorisé")
         
         justifications = justification_service.get_student_justifications(
             student_id,
@@ -232,17 +265,17 @@ async def get_student_justifications(
 @router.get("/pending/approvals", response_model=List[JustificationResponse])
 async def get_pending_approvals(
     db: Session = Depends(get_db),
-    current_user_id: str = "parent_001"  # TODO: Récupérer depuis le token JWT
+    current_user: dict = Depends(get_current_user)  # Remplacer par la dépendance d'authentification
 ):
     """
     Récupérer les justifications en attente d'approbation parentale
     """
     try:
         justification_service = JustificationService(db)
-        integration_service = IntegrationService()
+        current_user_id = current_user["id"]
+        user_role = current_user["role"]
         
         # Vérifier que l'utilisateur est un parent
-        user_role = await integration_service.get_user_role(current_user_id)
         if user_role != "parent":
             raise HTTPException(
                 status_code=403,
@@ -260,21 +293,20 @@ async def get_pending_approvals(
 @router.get("/pending/validations", response_model=List[JustificationResponse])
 async def get_pending_validations(
     db: Session = Depends(get_db),
-    current_user_id: str = "admin_001"  # TODO: Récupérer depuis le token JWT
+    current_user: dict = Depends(get_current_user)  # Remplacer par la dépendance d'authentification
 ):
     """
     Récupérer les justifications en attente de validation administrative
     """
     try:
         justification_service = JustificationService(db)
-        integration_service = IntegrationService()
+        user_role = current_user["role"]
         
-        # Vérifier que l'utilisateur est admin
-        user_role = await integration_service.get_user_role(current_user_id)
+        # Vérifier que l'utilisateur est admin ou enseignant
         if user_role not in ["admin", "teacher"]:
             raise HTTPException(
                 status_code=403,
-                detail="Seuls les administrateurs peuvent voir les validations en attente"
+                detail="Seuls les administrateurs ou enseignants peuvent voir les validations en attente"
             )
         
         justifications = justification_service.get_pending_validations()
@@ -290,29 +322,33 @@ async def update_justification(
     justification_id: int,
     update: JustificationUpdate,
     db: Session = Depends(get_db),
-    current_user_id: str = "student_001"  # TODO: Récupérer depuis le token JWT
+    current_user: dict = Depends(get_current_user)  # Remplacer par la dépendance d'authentification
 ):
     """
     Mettre à jour une justification
     """
     try:
         justification_service = JustificationService(db)
+        current_user_id = current_user["id"]
+        user_role = current_user["role"]
         
-        # Vérifier que la justification appartient à l'utilisateur
+        # Vérifier que la justification appartient à l'utilisateur ou que l'utilisateur est admin/enseignant
         justification = justification_service.get_justification(justification_id)
         if not justification:
             raise HTTPException(status_code=404, detail="Justification non trouvée")
         
-        if justification.student_id != current_user_id:
+        if user_role == "student" and justification.student_id != current_user_id:
             raise HTTPException(
                 status_code=403,
                 detail="Vous ne pouvez modifier que vos propres justifications"
             )
-        
+        elif user_role not in ["admin", "teacher", "student"]:
+             raise HTTPException(status_code=403, detail="Accès non autorisé pour modifier cette justification")
+
         result = justification_service.update_justification(
             justification_id,
             update,
-            current_user_id
+            current_user_id # L'auteur de la modification est toujours l'utilisateur actuel
         )
         
         return result
@@ -327,19 +363,33 @@ async def update_justification(
 async def get_justification_status(
     justification_id: int,
     db: Session = Depends(get_db),
-    current_user_id: str = "user_001"  # TODO: Récupérer depuis le token JWT
+    current_user: dict = Depends(get_current_user)  # Remplacer par la dépendance d'authentification
 ):
     """
     Récupérer le statut d'une justification
     """
     try:
         justification_service = JustificationService(db)
+        integration_service = IntegrationService()
+        current_user_id = current_user["id"]
+        user_role = current_user["role"]
 
         justification = justification_service.get_justification(justification_id)
         if not justification:
             raise HTTPException(status_code=404, detail="Justification non trouvée")
 
-        # TODO: Vérifier les permissions d'accès
+        # Vérifier les permissions d'accès
+        if user_role == "student" and justification.student_id != current_user_id:
+            raise HTTPException(status_code=403, detail="Accès non autorisé")
+
+        if user_role == "parent":
+            is_parent = await integration_service.verify_parent_student_relationship(current_user_id, justification.student_id)
+            if not is_parent:
+                raise HTTPException(status_code=403, detail="Accès non autorisé")
+
+        # Les admins et enseignants ont accès
+        if user_role not in ["admin", "teacher", "student", "parent"]:
+             raise HTTPException(status_code=403, detail="Rôle utilisateur inconnu ou non autorisé")
 
         return {
             "id": justification.id,
@@ -365,7 +415,7 @@ async def upload_document(
     description: Optional[str] = Form(None),
     is_primary: bool = Form(False),
     db: Session = Depends(get_db),
-    current_user_id: str = "user_001"  # TODO: Récupérer depuis le token JWT
+    current_user: dict = Depends(get_current_user)  # Remplacer par la dépendance d'authentification
 ):
     """
     Uploader un document pour une justification
@@ -373,18 +423,25 @@ async def upload_document(
     try:
         file_service = FileService(db)
         justification_service = JustificationService(db)
+        current_user_id = current_user["id"]
+        user_role = current_user["role"]
 
         # Vérifier que la justification existe
         justification = justification_service.get_justification(justification_id)
         if not justification:
             raise HTTPException(status_code=404, detail="Justification non trouvée")
 
-        # TODO: Vérifier les permissions d'upload
+        # Vérifier les permissions d'upload
+        # Seul l'étudiant concerné ou un admin/enseignant peut uploader des documents
+        if user_role == "student" and justification.student_id != current_user_id:
+            raise HTTPException(status_code=403, detail="Vous ne pouvez uploader des documents que pour vos propres justifications.")
+        elif user_role not in ["admin", "teacher", "student"]:
+            raise HTTPException(status_code=403, detail="Accès non autorisé pour uploader des documents.")
 
         document = await file_service.upload_document(
             file,
             justification_id,
-            current_user_id,
+            current_user_id, # L'uploader est l'utilisateur actuel
             description,
             is_primary
         )
@@ -399,13 +456,35 @@ async def upload_document(
 async def get_justification_documents(
     justification_id: int,
     db: Session = Depends(get_db),
-    current_user_id: str = "user_001"  # TODO: Récupérer depuis le token JWT
+    current_user: dict = Depends(get_current_user)  # Remplacer par la dépendance d'authentification
 ):
     """
     Récupérer les documents d'une justification
     """
     try:
         file_service = FileService(db)
+        justification_service = JustificationService(db) # Ajout pour récupérer la justification
+        integration_service = IntegrationService()
+        current_user_id = current_user["id"]
+        user_role = current_user["role"]
+
+        # Vérifier que la justification existe pour vérifier les droits ensuite
+        justification = justification_service.get_justification(justification_id)
+        if not justification:
+            raise HTTPException(status_code=404, detail="Justification non trouvée")
+
+        # Vérifier les permissions d'accès aux documents
+        if user_role == "student" and justification.student_id != current_user_id:
+            raise HTTPException(status_code=403, detail="Accès non autorisé aux documents de cette justification.")
+
+        if user_role == "parent":
+            is_parent = await integration_service.verify_parent_student_relationship(current_user_id, justification.student_id)
+            if not is_parent:
+                raise HTTPException(status_code=403, detail="Accès non autorisé aux documents de cette justification.")
+
+        # Les admins et enseignants ont accès
+        if user_role not in ["admin", "teacher", "student", "parent"]:
+             raise HTTPException(status_code=403, detail="Rôle utilisateur inconnu ou non autorisé à voir les documents.")
 
         documents = await file_service.get_justification_documents(justification_id)
 
