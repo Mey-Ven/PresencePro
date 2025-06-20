@@ -1,0 +1,26 @@
+{
+  "host": "0.0.0.0",
+  "port": 8000,
+  "jwt_secret_key": "gAAAAABnZGVmYXVsdC1nYXRld2F5LWp3dC1zZWNyZXQta2V5LWNoYW5nZS1pbi1wcm9kdWN0aW9u",
+  "jwt_secret_key_encrypted": true,
+  "redis_url": "redis://localhost:6379/0",
+  "rate_limit_requests_per_minute": 100,
+  "rate_limit_burst": 20,
+  "cors_origins": ["http://localhost:3000", "http://localhost:3001"],
+  "service_timeout": 10,
+  "auth_service_url": "http://localhost:8001",
+  "user_service_url": "http://localhost:8002",
+  "course_service_url": "http://localhost:8003",
+  "face_recognition_service_url": "http://localhost:8004",
+  "attendance_service_url": "http://localhost:8005",
+  "justification_service_url": "http://localhost:8006",
+  "messaging_service_url": "http://localhost:8007",
+  "notification_service_url": "http://localhost:8008",
+  "statistics_service_url": "http://localhost:8009",
+  "_metadata": {
+    "service_name": "gateway-service",
+    "updated_at": "2024-01-01T12:00:00.000000",
+    "version": 1,
+    "hash": "def456ghi789"
+  }
+}

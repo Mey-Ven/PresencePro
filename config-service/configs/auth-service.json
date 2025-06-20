@@ -1,0 +1,20 @@
+{
+  "host": "0.0.0.0",
+  "port": 8001,
+  "database_url": "sqlite:///./auth.db",
+  "jwt_secret_key": "gAAAAABnZGVmYXVsdC1hdXRoLWp3dC1zZWNyZXQta2V5LWNoYW5nZS1pbi1wcm9kdWN0aW9u",
+  "jwt_secret_key_encrypted": true,
+  "jwt_algorithm": "HS256",
+  "jwt_access_token_expire_minutes": 30,
+  "jwt_refresh_token_expire_days": 7,
+  "password_hash_algorithm": "bcrypt",
+  "enable_registration": true,
+  "enable_email_verification": false,
+  "redis_url": "redis://localhost:6379/0",
+  "_metadata": {
+    "service_name": "auth-service",
+    "updated_at": "2024-01-01T12:00:00.000000",
+    "version": 1,
+    "hash": "abc123def456"
+  }
+}
