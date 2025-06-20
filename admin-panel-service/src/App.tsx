@@ -1,77 +1,128 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
 import 'bootstrap/dist/css/bootstrap.min.css';
-
-// Contexts
-import { AuthProvider } from './contexts/AuthContext';
-import { AppProvider } from './contexts/AppContext';
-
-// Components
-import Layout from './components/Layout/Layout';
-import Login from './components/Auth/Login';
-import ProtectedRoute from './components/Auth/ProtectedRoute';
-
-// Pages
-import Dashboard from './pages/Dashboard';
-import UsersPage from './pages/UsersPage';
-import AttendancePage from './pages/AttendancePage';
-import JustificationsPage from './pages/JustificationsPage';
-import StatisticsPage from './pages/StatisticsPage';
-import SettingsPage from './pages/SettingsPage';
-
-// Styles
 import './App.css';
+
+// Composant temporaire pour le dashboard
+const Dashboard = () => (
+  <div className="container-fluid p-4">
+    <h2>Tableau de bord</h2>
+    <div className="row">
+      <div className="col-md-3">
+        <div className="card stat-card">
+          <div className="card-body text-center">
+            <h3>150</h3>
+            <p>Étudiants</p>
+          </div>
+        </div>
+      </div>
+      <div className="col-md-3">
+        <div className="card stat-card">
+          <div className="card-body text-center">
+            <h3>92%</h3>
+            <p>Taux de présence</p>
+          </div>
+        </div>
+      </div>
+      <div className="col-md-3">
+        <div className="card stat-card">
+          <div className="card-body text-center">
+            <h3>12</h3>
+            <p>Absents aujourd'hui</p>
+          </div>
+        </div>
+      </div>
+      <div className="col-md-3">
+        <div className="card stat-card">
+          <div className="card-body text-center">
+            <h3>5</h3>
+            <p>Classes</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+// Composant temporaire pour les utilisateurs
+const UsersPage = () => (
+  <div className="container-fluid p-4">
+    <h2>Gestion des utilisateurs</h2>
+    <div className="card">
+      <div className="card-body">
+        <p>Interface de gestion des utilisateurs en cours de développement...</p>
+      </div>
+    </div>
+  </div>
+);
+
+// Layout simple
+const Layout = ({ children }: { children: React.ReactNode }) => (
+  <div className="d-flex">
+    <div className="sidebar bg-primary text-white" style={{ width: '250px', minHeight: '100vh' }}>
+      <div className="p-3">
+        <h4>PresencePro</h4>
+        <nav className="nav flex-column mt-4">
+          <a href="/dashboard" className="nav-link text-white">
+            <i className="fas fa-tachometer-alt me-2"></i>
+            Tableau de bord
+          </a>
+          <a href="/users" className="nav-link text-white">
+            <i className="fas fa-users me-2"></i>
+            Utilisateurs
+          </a>
+          <a href="/attendance" className="nav-link text-white">
+            <i className="fas fa-calendar-check me-2"></i>
+            Présences
+          </a>
+        </nav>
+      </div>
+    </div>
+    <div className="flex-grow-1">
+      <nav className="navbar navbar-expand-lg navbar-light bg-light">
+        <div className="container-fluid">
+          <span className="navbar-brand">Admin Panel</span>
+          <div className="navbar-nav ms-auto">
+            <span className="nav-link">Administrateur</span>
+          </div>
+        </div>
+      </nav>
+      {children}
+    </div>
+  </div>
+);
 
 function App() {
   return (
     <div className="App">
-      <AuthProvider>
-        <AppProvider>
-          <Router>
-            <Routes>
-              {/* Route de connexion */}
-              <Route path="/login" element={<Login />} />
-              
-              {/* Routes protégées */}
-              <Route
-                path="/*"
-                element={
-                  <ProtectedRoute>
-                    <Layout>
-                      <Routes>
-                        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                        <Route path="/dashboard" element={<Dashboard />} />
-                        <Route path="/users/*" element={<UsersPage />} />
-                        <Route path="/attendance" element={<AttendancePage />} />
-                        <Route path="/justifications" element={<JustificationsPage />} />
-                        <Route path="/statistics" element={<StatisticsPage />} />
-                        <Route path="/settings" element={<SettingsPage />} />
-                        <Route path="*" element={<Navigate to="/dashboard" replace />} />
-                      </Routes>
-                    </Layout>
-                  </ProtectedRoute>
-                }
-              />
-            </Routes>
-          </Router>
-          
-          {/* Notifications Toast */}
-          <ToastContainer
-            position="top-right"
-            autoClose={5000}
-            hideProgressBar={false}
-            newestOnTop={false}
-            closeOnClick
-            rtl={false}
-            pauseOnFocusLoss
-            draggable
-            pauseOnHover
-            theme="light"
-          />
-        </AppProvider>
-      </AuthProvider>
+      <Router>
+        <Routes>
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/dashboard" element={
+            <Layout>
+              <Dashboard />
+            </Layout>
+          } />
+          <Route path="/users" element={
+            <Layout>
+              <UsersPage />
+            </Layout>
+          } />
+          <Route path="/attendance" element={
+            <Layout>
+              <div className="container-fluid p-4">
+                <h2>Gestion des présences</h2>
+                <div className="card">
+                  <div className="card-body">
+                    <p>Interface de gestion des présences en cours de développement...</p>
+                  </div>
+                </div>
+              </div>
+            </Layout>
+          } />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      </Router>
     </div>
   );
 }
