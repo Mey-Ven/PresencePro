@@ -1,0 +1,136 @@
+version: '3.8'
+
+services:
+  # Service principal de notifications
+  notification-service:
+    build: .
+    container_name: presencepro_notification_service
+    ports:
+      - "8008:8008"
+    environment:
+      - SERVICE_PORT=8008
+      - DEBUG=True
+      - DATABASE_URL=sqlite:///./notifications.db
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - SMTP_SERVER=smtp.gmail.com
+      - SMTP_PORT=587
+      - EMAIL_FROM=noreply@presencepro.com
+      - EMAIL_FROM_NAME=PresencePro
+      - USE_SENDGRID=False
+      - SMS_ENABLED=False
+      - PUSH_NOTIFICATIONS_ENABLED=False
+      - MOCK_EMAIL_SENDING=True
+      - SAVE_EMAILS_TO_FILE=True
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./logs:/app/logs
+      - ./uploads:/app/uploads
+      - ./notifications.db:/app/notifications.db
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - presencepro-network
+
+  # Worker Celery pour les tâches asynchrones
+  celery-worker:
+    build: .
+    container_name: presencepro_celery_worker
+    command: celery -A app.core.celery_app:celery_app worker --loglevel=info --concurrency=4 --queues=email,sms,push,events
+    environment:
+      - DATABASE_URL=sqlite:///./notifications.db
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - SMTP_SERVER=smtp.gmail.com
+      - SMTP_PORT=587
+      - EMAIL_FROM=noreply@presencepro.com
+      - USE_SENDGRID=False
+      - SMS_ENABLED=False
+      - PUSH_NOTIFICATIONS_ENABLED=False
+      - MOCK_EMAIL_SENDING=True
+      - SAVE_EMAILS_TO_FILE=True
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./logs:/app/logs
+      - ./uploads:/app/uploads
+      - ./notifications.db:/app/notifications.db
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - presencepro-network
+
+  # Scheduler Celery Beat pour les tâches périodiques
+  celery-beat:
+    build: .
+    container_name: presencepro_celery_beat
+    command: celery -A app.core.celery_app:celery_app beat --loglevel=info --schedule=/tmp/celerybeat-schedule
+    environment:
+      - DATABASE_URL=sqlite:///./notifications.db
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./logs:/app/logs
+      - ./notifications.db:/app/notifications.db
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - presencepro-network
+
+  # Monitoring Celery avec Flower
+  flower:
+    build: .
+    container_name: presencepro_flower
+    command: celery -A app.core.celery_app:celery_app flower --port=5555 --broker=redis://redis:6379/0
+    ports:
+      - "5555:5555"
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - presencepro-network
+
+  # Redis pour Celery et cache
+  redis:
+    image: redis:7.0-alpine
+    container_name: presencepro_redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - presencepro-network
+
+  # Redis Commander pour l'administration Redis (optionnel)
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: presencepro_redis_commander
+    ports:
+      - "8081:8081"
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - presencepro-network
+
+volumes:
+  redis_data:
+    driver: local
+
+networks:
+  presencepro-network:
+    driver: bridge
+    external: false
