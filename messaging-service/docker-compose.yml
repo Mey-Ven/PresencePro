@@ -1,0 +1,109 @@
+version: '3.8'
+
+services:
+  # Service de messagerie
+  messaging-service:
+    build: .
+    container_name: presencepro-messaging-service
+    ports:
+      - "8007:8007"
+    environment:
+      # Service Configuration
+      SERVICE_NAME: messaging-service
+      SERVICE_VERSION: 1.0.0
+      SERVICE_PORT: 8007
+      HOST: 0.0.0.0
+      DEBUG: "false"
+      
+      # MongoDB Configuration
+      MONGODB_URL: mongodb://mongodb:27017
+      MONGODB_DATABASE: presencepro_messaging
+      
+      # Security
+      SECRET_KEY: messaging-service-secret-key-change-in-production
+      ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 30
+      
+      # Services Integration
+      AUTH_SERVICE_URL: http://auth-service:8001
+      USER_SERVICE_URL: http://user-service:8002
+      
+      # WebSocket Configuration
+      WEBSOCKET_PING_INTERVAL: 20
+      WEBSOCKET_PING_TIMEOUT: 10
+      MAX_CONNECTIONS_PER_USER: 5
+      
+      # Message Configuration
+      MAX_MESSAGE_LENGTH: 2000
+      MAX_MESSAGES_PER_CONVERSATION: 1000
+      MESSAGE_RETENTION_DAYS: 365
+      
+      # Logging
+      LOG_LEVEL: INFO
+      LOG_FILE: ./logs/messaging.log
+    volumes:
+      - ./logs:/app/logs
+      - ./uploads:/app/uploads
+    depends_on:
+      - mongodb
+    networks:
+      - presencepro-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8007/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Base de données MongoDB
+  mongodb:
+    image: mongo:7.0
+    container_name: presencepro-messaging-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password123
+      MONGO_INITDB_DATABASE: presencepro_messaging
+    volumes:
+      - mongodb_data:/data/db
+      - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+    networks:
+      - presencepro-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Interface d'administration MongoDB (optionnel)
+  mongo-express:
+    image: mongo-express:1.0.0
+    container_name: presencepro-messaging-mongo-express
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: admin
+      ME_CONFIG_MONGODB_ADMINPASSWORD: password123
+      ME_CONFIG_MONGODB_URL: mongodb://admin:password123@mongodb:27017/
+      ME_CONFIG_BASICAUTH_USERNAME: admin
+      ME_CONFIG_BASICAUTH_PASSWORD: admin123
+    depends_on:
+      - mongodb
+    networks:
+      - presencepro-network
+    restart: unless-stopped
+    profiles:
+      - admin
+
+volumes:
+  mongodb_data:
+    driver: local
+
+networks:
+  presencepro-network:
+    driver: bridge
+    external: true
