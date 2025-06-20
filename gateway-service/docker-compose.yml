@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  gateway-service:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=development
+      - REDIS_URL=redis://redis:6379/0
+      - AUTH_SERVICE_URL=http://auth-service:8001
+      - USER_SERVICE_URL=http://user-service:8002
+      - COURSE_SERVICE_URL=http://course-service:8003
+      - FACE_RECOGNITION_SERVICE_URL=http://face-recognition-service:8004
+      - ATTENDANCE_SERVICE_URL=http://attendance-service:8005
+      - JUSTIFICATION_SERVICE_URL=http://justification-service:8006
+      - MESSAGING_SERVICE_URL=http://messaging-service:8007
+      - NOTIFICATION_SERVICE_URL=http://notification-service:8008
+      - STATISTICS_SERVICE_URL=http://statistics-service:8009
+    depends_on:
+      - redis
+    volumes:
+      - .:/app
+    networks:
+      - presencepro-network
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - presencepro-network
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    networks:
+      - presencepro-network
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    networks:
+      - presencepro-network
+
+volumes:
+  redis_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  presencepro-network:
+    external: true
