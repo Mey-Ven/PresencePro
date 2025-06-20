@@ -324,29 +324,18 @@ async def export_statistics(
     - **entity_id**: ID de l'entité (si applicable)
     """
     try:
-        # TODO: Implémenter l'export de données
-        # Pour l'instant, retourner une réponse mock
-        
-        export_id = f"export_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        file_path = f"{settings.export_dir}/exports/{export_id}.{export_request.format.value}"
-        
-        # Créer un fichier d'exemple
-        with open(file_path, "w") as f:
-            f.write("Export en cours de développement")
-        
-        file_size = len("Export en cours de développement")
-        
-        return ExportResponse(
-            export_id=export_id,
-            file_path=file_path,
-            file_url=f"/exports/{export_id}.{export_request.format.value}",
-            file_size=file_size,
-            format=export_request.format.value,
-            record_count=0,
-            generated_at=datetime.now(),
-            expires_at=datetime.now() + timedelta(days=7)
+        # Implémenter l'export de données
+        export_result = await statistics_service.export_data(
+            export_request=export_request,
+            db=db,
+            background_tasks=background_tasks # Passer les tâches de fond si l'export est long
         )
         
+        logger.info(f"Export de données demandé: ID {export_result.get('export_id')}")
+
+        # La fonction de service devrait retourner les informations nécessaires pour ExportResponse
+        return ExportResponse(**export_result)
+
     except Exception as e:
         logger.error(f"Erreur export statistiques: {e}")
         raise HTTPException(status_code=500, detail=str(e))

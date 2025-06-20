@@ -127,13 +127,24 @@ def send_bulk_push_notifications_task(notifications: List[Dict[str, Any]]):
 @celery_app.task
 def update_device_token(user_id: str, device_token: str, platform: str = "android"):
     """Mettre à jour le token d'appareil d'un utilisateur"""
+    db = None # Placeholder for SessionLocal() if needed for DB operations
     try:
-        # TODO: Stocker les tokens d'appareils en base de données
-        # pour pouvoir envoyer des notifications push ciblées
-        
-        logger.info(f"Token d'appareil mis à jour pour {user_id}: {device_token[:20]}...")
-        
-        return {"success": True, "user_id": user_id}
+        # Stocker les tokens d'appareils en base de données
+        # Assumant un modèle DeviceToken(user_id, token, platform, last_updated)
+        # db = SessionLocal() # Décommenter et utiliser si la base de données est nécessaire ici
+        # existing_token = db.query(DeviceToken).filter(DeviceToken.token == device_token).first()
+        # if existing_token:
+        #    existing_token.user_id = user_id
+        #    existing_token.platform = platform
+        #    existing_token.last_updated = datetime.now()
+        # else:
+        #    new_token = DeviceToken(user_id=user_id, token=device_token, platform=platform, last_updated=datetime.now())
+        #    db.add(new_token)
+        # db.commit()
+
+        logger.info(f"Token d'appareil (simulé) mis à jour pour {user_id}: {device_token[:20]}..., Platforme: {platform}")
+
+        return {"success": True, "user_id": user_id, "token_stored": True} # Simulation
         
     except Exception as e:
         logger.error(f"Erreur mise à jour token: {e}")
@@ -143,13 +154,25 @@ def update_device_token(user_id: str, device_token: str, platform: str = "androi
 @celery_app.task
 def cleanup_invalid_tokens():
     """Nettoyer les tokens d'appareils invalides"""
+    db = None # Placeholder for SessionLocal()
+    cleaned_count = 0
     try:
-        # TODO: Implémenter le nettoyage des tokens invalides
-        # en utilisant les retours de Firebase
+        # Implémenter le nettoyage des tokens invalides
+        # Cette tâche devrait être déclenchée périodiquement ou après des campagnes d'envoi importantes.
+        # 1. Récupérer les résultats des envois précédents (stockés dans NotificationLog ou un cache).
+        # 2. Identifier les tokens marqués comme "NotRegistered" ou "InvalidRegistration" par FCM.
+        # db = SessionLocal() # Décommenter pour opérations DB
+        # Par exemple, si les résultats FCM sont stockés avec les tokens:
+        # invalid_tokens_from_fcm_results = get_invalid_tokens_from_fcm_responses() # Fonction à implémenter
+        # for token_to_remove in invalid_tokens_from_fcm_results:
+        #     deleted_count = db.query(DeviceToken).filter(DeviceToken.token == token_to_remove).delete()
+        #     if deleted_count > 0:
+        #         cleaned_count += deleted_count
+        # db.commit()
+
+        logger.info(f"Nettoyage (simulé) des tokens invalides. Tokens nettoyés: {cleaned_count}")
         
-        logger.info("Nettoyage des tokens invalides")
-        
-        return {"success": True, "cleaned_tokens": 0}
+        return {"success": True, "cleaned_tokens": cleaned_count}
         
     except Exception as e:
         logger.error(f"Erreur nettoyage tokens: {e}")

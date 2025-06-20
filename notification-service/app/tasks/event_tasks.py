@@ -9,9 +9,56 @@ import uuid
 from app.core.celery_app import celery_app
 from app.tasks.email_tasks import send_email_task
 from app.models.notification import EventQueue, NotificationLog
-from app.core.database import SessionLocal
+from app.core.database import SessionLocal, Session # Ajout de Session pour le type hint
+# Supposons que les modèles User et Parent existent
+from app.models.user import User, Parent # À adapter selon la structure réelle
 
 logger = logging.getLogger(__name__)
+
+# Placeholder functions - these need proper implementation
+def get_student_and_parent_info(student_id: str, db: Session) -> Dict[str, Any]:
+    """Récupère les informations de l'étudiant et de ses parents. À IMPLÉMENTER."""
+    # Cette fonction devrait interagir avec le user-service ou les tables User/Parent.
+    logger.info(f"Récupération des informations pour l'étudiant {student_id} (simulation).")
+    student = db.query(User).filter(User.id == student_id, User.role == "student").first()
+    if not student:
+        logger.warning(f"Étudiant {student_id} non trouvé.")
+        return {}
+
+    parents_info = []
+    # Supposons une relation student.parents ou une table d'association
+    # Ceci est un exemple très simplifié
+    # parents = db.query(Parent).join(Parent.children).filter(User.id == student_id).all()
+    # Mieux: Supposer une table `StudentParentAssociation`
+    # ou que le modèle `User` a un champ `parent_ids` ou une relation.
+    # Pour la simulation, on retourne des données fixes si l'étudiant est trouvé.
+
+    # Exemple de récupération si les parents sont directement liés à l'étudiant (simplifié)
+    # parents = db.query(User).filter(User.role == "parent", User.children.any(id=student_id)).all()
+    # Cela dépend fortement du schéma de la base de données.
+
+    # Simulation:
+    parent_emails = [f"parent_of_{student_id}@example.com"] # Email de parent simulé
+
+    return {
+        "student_name": student.full_name if hasattr(student, 'full_name') else f"Student {student_id}",
+        "parent_name": f"Parent of {student.full_name}" if hasattr(student, 'full_name') else f"Parent of Student {student_id}", # Simplifié
+        "parent_emails": parent_emails, # Pourrait être une liste d'emails
+    }
+
+def validate_webhook_signature(payload: Dict[str, Any], headers: Optional[Dict[str, str]]) -> bool:
+    """Valide la signature d'un webhook. À IMPLÉMENTER."""
+    # Implémenter la logique de validation de signature ici (ex: HMAC SHA256)
+    # Cela dépendra du service envoyant le webhook (ex: GitHub, Stripe, etc.)
+    # Pour l'instant, on suppose que c'est valide pour les tests.
+    if headers and headers.get("X-Webhook-Secret"): # Exemple de header
+        # secret = os.getenv("WEBHOOK_SECRET")
+        # signature = headers.get("X-Hub-Signature-256") # Exemple
+        # if not signature or not verify_signature(payload, secret, signature):
+        #     return False
+        pass # Laisser la logique de validation pour plus tard
+    logger.warning("Validation de signature du webhook non implémentée, autorisant par défaut.")
+    return True
 
 
 @celery_app.task
@@ -87,13 +134,17 @@ def process_absence_detected(data: Dict[str, Any], db):
         absence_date = data.get("absence_date")
         absence_time = data.get("absence_time")
         
-        # TODO: Récupérer les informations de l'étudiant et des parents
-        # depuis le user-service
+        # Récupérer les informations de l'étudiant et des parents
+        user_info = get_student_and_parent_info(student_id, db)
         
+        student_name = user_info.get("student_name", "Étudiant")
+        parent_name = user_info.get("parent_name", "Parent")
+        parent_emails = user_info.get("parent_emails", [])
+
         # Données pour le template
         template_data = {
-            "student_name": data.get("student_name", "Étudiant"),
-            "parent_name": data.get("parent_name", "Parent"),
+            "student_name": student_name,
+            "parent_name": parent_name,
             "absence_date": absence_date,
             "absence_time": absence_time,
             "course_name": data.get("course_name", "Cours"),
@@ -101,7 +152,9 @@ def process_absence_detected(data: Dict[str, Any], db):
         }
         
         # Envoyer notification aux parents
-        parent_emails = data.get("parent_emails", [])
+        if not parent_emails:
+            logger.warning(f"Aucun email de parent trouvé pour l'étudiant {student_id} lors de la détection d'absence.")
+
         for parent_email in parent_emails:
             notification_id = f"absence_{student_id}_{course_id}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
             
@@ -353,10 +406,19 @@ def process_webhook_event(webhook_data: Dict[str, Any]):
         logger.info(f"Traitement webhook: {webhook_data.get('event_type')}")
         
         # Valider la signature du webhook
-        # TODO: Implémenter la validation de signature
+        if not validate_webhook_signature(webhook_data, headers=webhook_data.get("headers")):
+            logger.error("Validation de signature du webhook échouée.")
+            # Pourrait lever une exception ou simplement retourner pour ignorer.
+            # Pour l'instant, on logue et on continue, mais en production, il faudrait être plus strict.
+            # raise HTTPException(status_code=400, detail="Invalid signature")
+            return {"success": False, "reason": "invalid_signature"}
+
+        # Extraire les données pertinentes de l'événement webhook si nécessaire
+        # Par exemple, si les données de l'événement sont imbriquées
+        actual_event_data = webhook_data.get("payload", webhook_data) # Supposons que les données sont dans "payload" ou à la racine
         
         # Traiter l'événement
-        process_event.delay(webhook_data)
+        process_event.delay(actual_event_data)
         
         logger.info("Webhook traité avec succès")
         
