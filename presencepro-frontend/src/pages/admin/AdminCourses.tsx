@@ -16,12 +16,26 @@ import {
   UserGroupIcon,
 } from '@heroicons/react/24/outline';
 
+// Define specific types for course status
+type CourseStatus = 'active' | 'inactive';
+
+const courseStatusLabels: Record<CourseStatus, string> = {
+  active: 'Actif',
+  inactive: 'Inactif',
+};
+
+const courseStatusBadges: Record<CourseStatus, string> = {
+  active: 'bg-green-100 text-green-800',
+  inactive: 'bg-gray-100 text-gray-800',
+};
+
+
 // Local interfaces for filters
 interface CourseFilters {
   search: string;
-  subject: string;
-  level: string;
-  status: string;
+  subject: string; // Assuming subject name, not ID
+  level: string;   // Assuming level name, not ID
+  status: string;  // Can be 'all' or CourseStatus
 }
 
 const AdminCourses: React.FC = () => {
@@ -166,9 +180,28 @@ const AdminCourses: React.FC = () => {
     }
   };
 
-  const handleToggleCourseStatus = async (courseId: number, currentStatus: string) => {
+  const handleBulkDeleteSelectedCourses = async () => {
+    if (selectedCourses.length === 0) return;
+    if (window.confirm(`Êtes-vous sûr de vouloir supprimer ${selectedCourses.length} cours ?`)) {
+      try {
+        // Assuming courseService.bulkDeleteCourses exists or similar
+        // For now, let's simulate by deleting one by one
+        // In a real scenario, a bulk delete endpoint is preferred.
+        for (const courseIdStr of selectedCourses) {
+          await courseService.deleteCourse(parseInt(courseIdStr, 10));
+        }
+        setCourses(prev => prev.filter(course => !selectedCourses.includes(course.id.toString())));
+        setSelectedCourses([]);
+      } catch (error) {
+        console.error('Error deleting selected courses:', error);
+        alert('Erreur lors de la suppression des cours sélectionnés.');
+      }
+    }
+  };
+
+  const handleToggleCourseStatus = async (courseId: number, currentStatus: CourseStatus) => {
     try {
-      const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+      const newStatus: CourseStatus = currentStatus === 'active' ? 'inactive' : 'active';
       await courseService.updateCourse(courseId, { status: newStatus });
 
       // Refresh the course list
@@ -184,13 +217,18 @@ const AdminCourses: React.FC = () => {
   };
 
   // Get status badge
-  const getStatusBadge = (status: string) => {
-    const badge = status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800';
-    const label = status === 'active' ? 'Actif' : 'Inactif';
-
+  const getStatusBadge = (statusValue: string) => {
+    const status = statusValue as CourseStatus;
+    if (!courseStatusLabels[status]) {
+      return (
+        <span className="px-2 py-1 text-xs font-medium rounded-md bg-gray-200 text-gray-700">
+          Inconnu ({statusValue})
+        </span>
+      );
+    }
     return (
-      <span className={`px-2 py-1 text-xs font-medium rounded-md ${badge}`}>
-        {label}
+      <span className={`px-2 py-1 text-xs font-medium rounded-md ${courseStatusBadges[status]}`}>
+        {courseStatusLabels[status]}
       </span>
     );
   };
@@ -242,7 +280,10 @@ const AdminCourses: React.FC = () => {
           <div className="mt-4 sm:mt-0 flex space-x-2">
             {selectedCourses.length > 0 && (
               <div className="flex space-x-2 mr-4">
-                <button className="bg-red-600 text-white px-3 py-2 rounded-md text-sm hover:bg-red-700">
+                <button
+                  onClick={handleBulkDeleteSelectedCourses}
+                  className="bg-red-600 text-white px-3 py-2 rounded-md text-sm hover:bg-red-700"
+                >
                   Supprimer ({selectedCourses.length})
                 </button>
               </div>

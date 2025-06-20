@@ -14,9 +14,27 @@ import {
 } from '@heroicons/react/24/outline';
 
 // Use interfaces from API service
+
+// Define specific types for user roles
+type UserRole = 'admin' | 'teacher' | 'student' | 'parent';
+
+const userRoleLabels: Record<UserRole, string> = {
+  admin: 'Administrateur',
+  teacher: 'Enseignant',
+  student: 'Étudiant',
+  parent: 'Parent',
+};
+
+const userRoleBadges: Record<UserRole, string> = {
+  admin: 'bg-purple-100 text-purple-800',
+  teacher: 'bg-blue-100 text-blue-800',
+  student: 'bg-yellow-100 text-yellow-800',
+  parent: 'bg-green-100 text-green-800',
+};
+
 interface LocalUserFilters {
-  role: string;
-  status: string;
+  role: string; // Can be 'all' or UserRole
+  status: string; // Can be 'all', 'active', 'inactive'
   search: string;
 }
 
@@ -254,24 +272,18 @@ const AdminUsers: React.FC = () => {
   };
 
   // Obtenir le badge de rôle
-  const getRoleBadge = (role: string) => {
-    const badges = {
-      admin: 'bg-purple-100 text-purple-800',
-      teacher: 'bg-blue-100 text-blue-800',
-      student: 'bg-yellow-100 text-yellow-800',
-      parent: 'bg-green-100 text-green-800',
-    };
-
-    const labels = {
-      admin: 'Administrateur',
-      teacher: 'Enseignant',
-      student: 'Étudiant',
-      parent: 'Parent',
-    };
-
+  const getRoleBadge = (roleValue: string) => {
+    const role = roleValue as UserRole;
+    if (!userRoleLabels[role]) {
+      return (
+        <span className="px-2 py-1 text-xs font-medium rounded-md bg-gray-200 text-gray-700">
+          Rôle Inconnu ({roleValue})
+        </span>
+      );
+    }
     return (
-      <span className={`px-2 py-1 text-xs font-medium rounded-md ${badges[role as keyof typeof badges]}`}>
-        {labels[role as keyof typeof labels]}
+      <span className={`px-2 py-1 text-xs font-medium rounded-md ${userRoleBadges[role]}`}>
+        {userRoleLabels[role]}
       </span>
     );
   };

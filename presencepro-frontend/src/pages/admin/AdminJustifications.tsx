@@ -13,12 +13,37 @@ import {
   DocumentArrowDownIcon,
   MagnifyingGlassIcon,
   FunnelIcon,
+  ExclamationTriangleIcon, // Added for unknown status icon
 } from '@heroicons/react/24/outline';
+
+// Define specific types for justification status
+type JustificationStatus = 'pending' | 'approved' | 'rejected' | 'under_review';
+
+const justificationStatusLabels: Record<JustificationStatus, string> = {
+  pending: 'En attente',
+  approved: 'Approuvée',
+  rejected: 'Rejetée',
+  under_review: 'En cours d\'examen',
+};
+
+const justificationStatusBadges: Record<JustificationStatus, string> = {
+  pending: 'bg-yellow-100 text-yellow-800',
+  approved: 'bg-green-100 text-green-800',
+  rejected: 'bg-red-100 text-red-800',
+  under_review: 'bg-blue-100 text-blue-800',
+};
+
+const justificationStatusIcons: Record<JustificationStatus, JSX.Element> = {
+  pending: <ClockIcon className="h-4 w-4 mr-1" />,
+  approved: <CheckCircleIcon className="h-4 w-4 mr-1" />,
+  rejected: <XCircleIcon className="h-4 w-4 mr-1" />,
+  under_review: <EyeIcon className="h-4 w-4 mr-1" />,
+};
 
 // Local interfaces for filters
 interface LocalJustificationFilters {
-  status: string;
-  class: string;
+  status: string; // Can be 'all' or JustificationStatus
+  class: string;  // Assuming class name, not ID
   dateFrom: string;
   dateTo: string;
   search: string;
@@ -51,14 +76,28 @@ const AdminJustifications: React.FC = () => {
 
       try {
         // Prepare API filters
-        const apiFilters = {
-          status: filters.status !== 'all' ? filters.status : undefined,
-          date_from: filters.dateFrom || undefined,
-          date_to: filters.dateTo || undefined,
-          search: filters.search || undefined,
+        const apiFilters: any = { // Using 'any' for apiFilters temporarily if service expects specific types not fully defined here
           page: pagination.page,
           per_page: pagination.per_page,
         };
+
+        if (filters.status !== 'all') {
+          apiFilters.status = filters.status;
+        }
+        if (filters.dateFrom) {
+          apiFilters.date_from = filters.dateFrom;
+        }
+        if (filters.dateTo) {
+          apiFilters.date_to = filters.dateTo;
+        }
+        if (filters.search) {
+          apiFilters.search = filters.search;
+        }
+        if (filters.class !== 'all') {
+          // Assuming the backend expects a 'class_id' or similar parameter.
+          // If it expects the class name directly, this would be 'class: filters.class'
+          apiFilters.class_name = filters.class; // Or class_id if that's what backend takes
+        }
 
         // Load justifications and stats from API
         const [justificationsResponse, statsResponse] = await Promise.all([
@@ -137,38 +176,26 @@ const AdminJustifications: React.FC = () => {
   const filteredJustifications = justifications;
 
   // Obtenir le badge de statut
-  const getStatusBadge = (status: string) => {
-    const badges = {
-      pending: 'bg-yellow-100 text-yellow-800',
-      approved: 'bg-green-100 text-green-800',
-      rejected: 'bg-red-100 text-red-800',
-      under_review: 'bg-blue-100 text-blue-800',
-    };
-
-    const labels = {
-      pending: 'En attente',
-      approved: 'Approuvée',
-      rejected: 'Rejetée',
-      under_review: 'En cours d\'examen',
-    };
-
-    const icons = {
-      pending: <ClockIcon className="h-4 w-4 mr-1" />,
-      approved: <CheckCircleIcon className="h-4 w-4 mr-1" />,
-      rejected: <XCircleIcon className="h-4 w-4 mr-1" />,
-      under_review: <EyeIcon className="h-4 w-4 mr-1" />,
-    };
-
+  const getStatusBadge = (statusValue: string) => {
+    const status = statusValue as JustificationStatus;
+    if (!justificationStatusLabels[status]) {
+      return (
+        <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-md bg-gray-100 text-gray-800">
+          <ExclamationTriangleIcon className="h-4 w-4 mr-1" /> {/* Using a generic icon for unknown */}
+          Inconnu ({statusValue})
+        </span>
+      );
+    }
     return (
-      <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-md ${badges[status as keyof typeof badges]}`}>
-        {icons[status as keyof typeof icons]}
-        {labels[status as keyof typeof labels]}
+      <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-md ${justificationStatusBadges[status]}`}>
+        {justificationStatusIcons[status]}
+        {justificationStatusLabels[status]}
       </span>
     );
   };
 
   // Gérer l'approbation/rejet
-  const handleStatusChange = async (justificationId: number, newStatus: 'approved' | 'rejected', comments?: string) => {
+  const handleStatusChange = async (justificationId: number, newStatus: Extract<JustificationStatus, 'approved' | 'rejected'>, comments?: string) => {
     if (!user) return;
 
     try {

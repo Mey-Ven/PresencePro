@@ -17,6 +17,47 @@ import {
 
 // Use interfaces from API service
 
+// WebSocket message types
+interface WebSocketMessageBase {
+  type: string;
+}
+
+interface NewMessageEventData extends WebSocketMessageBase {
+  type: 'new_message';
+  message: Message;
+}
+
+interface SendMessagePayload extends WebSocketMessageBase {
+  type: 'send_message';
+  message: Message; // Or a subset of fields needed for sending
+}
+
+type ReceivedWebSocketMessage = NewMessageEventData; // Add more types as needed
+
+// Types for badge/icon functions (even if not used yet, good for consistency)
+type MessagePriority = 'low' | 'normal' | 'high' | 'urgent';
+const messagePriorityLabels: Record<MessagePriority, string> = {
+  low: 'Faible',
+  normal: 'Normal',
+  high: 'Important',
+  urgent: 'Urgent',
+};
+const messagePriorityBadges: Record<MessagePriority, string> = {
+  low: 'bg-gray-100 text-gray-800',
+  normal: 'bg-blue-100 text-blue-800',
+  high: 'bg-yellow-100 text-yellow-800',
+  urgent: 'bg-red-100 text-red-800',
+};
+
+type MessageDisplayStatus = 'sent' | 'delivered' | 'read' | 'draft';
+const messageDisplayStatusIcons: Record<MessageDisplayStatus, JSX.Element> = {
+  sent: <PaperAirplaneIcon className="h-4 w-4 text-blue-500" />,
+  delivered: <CheckCircleIcon className="h-4 w-4 text-green-500" />,
+  read: <CheckCircleIcon className="h-4 w-4 text-green-600" />, // Differentiated for clarity, could be same as delivered
+  draft: <ClockIcon className="h-4 w-4 text-gray-500" />,
+};
+
+
 const AdminMessaging: React.FC = () => {
   const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -56,23 +97,36 @@ const AdminMessaging: React.FC = () => {
         };
 
         ws.onmessage = (event) => {
-          const data = JSON.parse(event.data);
+          try {
+            const parsedData = JSON.parse(event.data as string);
+            // Type guard for received messages
+            if (parsedData && typeof parsedData.type === 'string') {
+              const data = parsedData as ReceivedWebSocketMessage;
 
-          if (data.type === 'new_message') {
-            // Add new message to the list
-            setMessages(prev => [...prev, data.message]);
+              if (data.type === 'new_message' && data.message) {
+                const newMessageData = data.message as Message; // Assert if confident, or validate
+                // Add new message to the list
+                setMessages(prev => [...prev, newMessageData]);
 
-            // Update thread with new message
-            setThreads(prev => prev.map(thread =>
-              thread.id === data.message.thread_id
-                ? {
-                    ...thread,
-                    last_message: data.message.content,
-                    last_message_time: data.message.created_at,
-                    unread_count: thread.unread_count + 1,
-                  }
-                : thread
-            ));
+                // Update thread with new message
+                setThreads(prev => prev.map(thread =>
+                  thread.id === newMessageData.thread_id
+                    ? {
+                        ...thread,
+                        last_message: newMessageData.content,
+                        last_message_time: newMessageData.created_at,
+                        // unread_count should ideally be handled by backend or a more robust client logic
+                        unread_count: (thread.unread_count || 0) + 1,
+                      }
+                    : thread
+                ));
+              }
+              // Handle other message types if any
+            } else {
+              console.warn('Received WebSocket message with unknown structure:', parsedData);
+            }
+          } catch (e) {
+            console.error('Error parsing WebSocket message data:', e);
           }
         };
 
@@ -230,42 +284,29 @@ const AdminMessaging: React.FC = () => {
   );
 
   // Obtenir le badge de priorité
-  const getPriorityBadge = (priority: string) => {
-    const badges = {
-      low: 'bg-gray-100 text-gray-800',
-      normal: 'bg-blue-100 text-blue-800',
-      high: 'bg-yellow-100 text-yellow-800',
-      urgent: 'bg-red-100 text-red-800',
-    };
-
-    const labels = {
-      low: 'Faible',
-      normal: 'Normal',
-      high: 'Important',
-      urgent: 'Urgent',
-    };
-
+  const getPriorityBadge = (priorityValue: string) => {
+    const priority = priorityValue as MessagePriority;
+    if (!messagePriorityLabels[priority]) {
+      return (
+        <span className="px-2 py-1 text-xs font-medium rounded-md bg-gray-200 text-gray-700">
+          Priorité Inconnue
+        </span>
+      );
+    }
     return (
-      <span className={`px-2 py-1 text-xs font-medium rounded-md ${badges[priority as keyof typeof badges]}`}>
-        {labels[priority as keyof typeof labels]}
+      <span className={`px-2 py-1 text-xs font-medium rounded-md ${messagePriorityBadges[priority]}`}>
+        {messagePriorityLabels[priority]}
       </span>
     );
   };
 
   // Obtenir l'icône de statut
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'sent':
-        return <PaperAirplaneIcon className="h-4 w-4 text-blue-500" />;
-      case 'delivered':
-        return <CheckCircleIcon className="h-4 w-4 text-green-500" />;
-      case 'read':
-        return <CheckCircleIcon className="h-4 w-4 text-green-600" />;
-      case 'draft':
-        return <ClockIcon className="h-4 w-4 text-gray-500" />;
-      default:
-        return null;
+  const getStatusIcon = (statusValue: string) => {
+    const status = statusValue as MessageDisplayStatus;
+    if (!messageDisplayStatusIcons[status]) {
+      return null; // Or a default icon
     }
+    return messageDisplayStatusIcons[status];
   };
 
   if (isLoading) {
